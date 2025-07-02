@@ -25,7 +25,7 @@ const config = {
 
     redis: {
         redis_host: process.env.REDIS_HOST || "localhost",
-        redis_port: process.env.REDIS_PORT || "",
+        redis_port: process.env.REDIS_PORT || 6379,
         redis_user: process.env.REDIS_USERNAME || "root",
         redis_pass: process.env.REDIS_PASSWORD || "",
         redis_prefix: process.env.REDIS_KEY_PREFIX
