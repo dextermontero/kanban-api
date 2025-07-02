@@ -9,17 +9,22 @@ function formatTimestamp(date) {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-function formatResponse(statusCode, message, data = null) {
+function formatResponse(statusCode, message, data = null, meta = null) {
     const timestamp = formatTimestamp(new Date());
     if (typeof statusCode !== 'number') {
         throw new Error('Status code must be a number');
     }
-    return {
+
+    const response = {
         status: statusCode,
         timestamp: timestamp,
         message: message,
-        data: data,
-    }
+    };
+
+    response.data = data;
+
+    if (meta) response.meta = meta;
+    return response;
 }
 
 export default formatResponse;

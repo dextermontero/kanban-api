@@ -34,8 +34,46 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(helmet());
 
-import authRouter from './routes/auth.js'
-app.use('/api/auth', authRouter);
+/**
+ * @swagger
+ * components:
+ *   securitySchemes:
+ *     BearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ * 
+ * /:
+ *   get:
+ *     summary: Welcome to the API
+ *     description: This is the welcome endpoint of the API.
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response with the app's version and name
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A welcome message for the user.
+ *                   example: "Welcome to the Kanban API build version 1.0.0"
+ *                 app_name:
+ *                   type: string
+ *                   description: The name of the app
+ *                   example: "Kanban API"
+ *                 app_tag:
+ *                   type: string
+ *                   description: The version of the app
+ *                   example: "1.0.0"
+ */
+app.get('/', authenticateToken, async (req, res) => {
+    res.send(`Welcome to ${config.server.app_name} build version ${config.server.app_tag}`);
+});
+
 
 /**
  * @swagger
@@ -95,45 +133,11 @@ app.post('/refresh_token', refreshToken, async (req, res) => {
     return res.status(200).json(formatResponse(200, 'New access token issued'));
 });
 
-/**
- * @swagger
- * components:
- *   securitySchemes:
- *     BearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
- * 
- * /:
- *   get:
- *     summary: Welcome to the API
- *     description: This is the welcome endpoint of the API.
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: Successful response with the app's version and name
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   description: A welcome message for the user.
- *                   example: "Welcome to the Kanban API build version 1.0.0"
- *                 app_name:
- *                   type: string
- *                   description: The name of the app
- *                   example: "Kanban API"
- *                 app_tag:
- *                   type: string
- *                   description: The version of the app
- *                   example: "1.0.0"
- */
-app.get('/', authenticateToken, async (req, res) => {
-    res.send(`Welcome to ${config.server.app_name} build version ${config.server.app_tag}`);
-});
+import authRouter from './routes/auth.js'
+app.use('/api/auth', authRouter);
+
+import userRouter from './routes/users/users.js';
+app.use('/api', userRouter);
 
 app.use((err, req, res, next) => {
     console.error(err.stack);
@@ -172,7 +176,7 @@ const swaggerDefinition = {
 
 const swaggerOptions = {
     swaggerDefinition,
-    apis: ['./routes/*.js', './api.js'],
+    apis: ['./routes/*.js', './routes/**/*.js', './api.js'],
 };
 
 const swaggerSpec = swaggerJSDoc(swaggerOptions);

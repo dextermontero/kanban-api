@@ -72,7 +72,7 @@ router.post('/register',
         const db = await db.getDB();
         const user_login = await db.collection('user_login');
 
-        const existingUser = await user_login.findOne({ email_adress: email });
+        const existingUser = await user_login.findOne({ email_address: email });
 
         if (existingUser) {
             return res.status(400).json({ message: 'Email is already registered' });
@@ -85,7 +85,7 @@ router.post('/register',
                 _id: uuid,
                 avatar: null,
                 full_name: full_name,
-                email_adress: email,
+                email_address: email,
                 password: hashedPassword,
                 groups: [],
                 roles: "",
@@ -146,7 +146,7 @@ router.post('/login', async (req, res) => {
     const user_login = await user.collection('user_login');
     const generated_tokens = await user.collection('generated_tokens');
 
-    const existingUser = await user_login.findOne({ email_adress: email });
+    const existingUser = await user_login.findOne({ email_address: email });
 
     if (!existingUser) {
         return res.status(401).json(formatResponse(401, 'Invalid credentials. Please try again!'));
@@ -161,13 +161,13 @@ router.post('/login', async (req, res) => {
         const userAgent = req.headers['user-agent'];
 
         const accessToken = jwt.sign(
-            { _id: existingUser._id, email: existingUser.email_adress, jti: `${existingUser._id}-${new Date().getTime()}`, },
+            { _id: existingUser._id, email: existingUser.email_address, jti: `${existingUser._id}-${new Date().getTime()}`, },
             config.jwt.jwt_secret_token,
             { expiresIn: config.jwt.jwt_secret_token_expiry }
         );
 
         const refreshToken = jwt.sign(
-            { _id: existingUser._id, email: existingUser.email_adress },
+            { _id: existingUser._id, email: existingUser.email_address },
             config.jwt.jwt_refresh_token,
             { expiresIn: config.jwt.jwt_refresh_token_expiry }
         );
@@ -181,7 +181,7 @@ router.post('/login', async (req, res) => {
 
         await generated_tokens.updateOne(
             {
-                email: existingUser.email_adress,
+                email: existingUser.email_address,
             },
             {
                 $set: {
