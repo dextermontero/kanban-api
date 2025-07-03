@@ -32,7 +32,19 @@ app.use(limiter);
 
 app.use(cookieParser());
 app.use(express.json());
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            connectSrc: [
+                "'self'",
+                "https://kanban-api-tyww.onrender.com/"
+            ],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+        }
+    }
+}));
 
 /**
  * @swagger
