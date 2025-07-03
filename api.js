@@ -180,7 +180,7 @@ const swaggerDefinition = {
     },
     servers: [
         {
-        url: `http://localhost:${port}/`,
+        url: `${app_url}:${port}/`,
         description: 'Development server',
         },
     ],
