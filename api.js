@@ -182,7 +182,7 @@ const swaggerDefinition = {
     },
     servers: [
         {
-        url: `${app_url}/`,
+        url: `${app_url}`,
         description: 'Development server',
         },
     ],
@@ -198,5 +198,5 @@ const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.listen(port, () => {
-    console.log(`Server is running on ${app_url}:${port}`);
+    console.log(`Server is running on ${app_url}`);
 });
