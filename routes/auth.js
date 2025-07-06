@@ -5,6 +5,8 @@ import express from 'express';
 import jwt from 'jsonwebtoken'
 import { body, validationResult } from 'express-validator';
 
+import authenticateToken from '../middleware/authToken.js';
+
 import encrypt from '../security/encrypt.js';
 
 import formatResponse from '../utils/responseFormatter.js';
@@ -193,10 +195,21 @@ router.post('/login', async (req, res) => {
             { upsert: true }
         )
 
-        res.json({
-            message: 'Logged in successfully',
-            token: accessToken,
-        });
+        const userResponse = {
+            id: existingUser._id,
+            avatar: existingUser.avatar || null,
+            full_name: existingUser.full_name,
+            email_address: existingUser.email_address,
+            groups: existingUser.groups || [], 
+            roles: existingUser.roles || "", 
+            verified: existingUser.verified || false, 
+            created_at: existingUser.created_at, 
+            updated_at: existingUser.updated_at,
+            access_token: accessToken
+        };
+
+        return res.status(200).json(formatResponse(200, 'Logged in successfully', userResponse));
+
     } catch (error) {
         return res.status(401).json(formatResponse(401, 'Invalid credentials. Please try again!'));
     }
@@ -241,11 +254,14 @@ router.post('/login', async (req, res) => {
  *       400:
  *         description: Invalid credentials. Please try again!
  */
-router.post('/logout', async (req, res) => {
+router.post('/logout', authenticateToken, async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1];
-    const payload = req.body.token;
 
-    if (token === payload) {
+    if (!token) {
+        return res.status(401).json(formatResponse(401, 'No token provided'));
+    }
+
+    if (token) {
         if(token) {
             const decoded = jwt.decode(token);
             await redis.set(decoded.jti, 'blacklisted', { EX: 3600 });
