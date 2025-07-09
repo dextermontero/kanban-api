@@ -1,0 +1,63 @@
+image: node:20-alpine  # Use Node.js with Alpine Linux for lightweight builds
+
+pipelines:
+  default:
+    - step:
+        name: Build and Test
+        caches:
+          - node
+        script:
+          - echo "Installing dependencies..."
+          - yarn install --frozen-lockfile  # Install dependencies using Yarn
+          - echo "Running tests..."
+          # - yarn test  # Replace with your test command (e.g., Jest, Mocha)
+    
+    - step:
+        name: Docker Build & Push
+        services:
+          - docker
+        script:
+          - echo "Building Docker image..."
+          - docker build -t your-docker-image-name .
+          - echo "Logging into Docker Hub..."
+          - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+          - echo "Pushing Docker image to Docker Hub..."
+          - docker push your-docker-image-name:latest
+
+  tags:
+    'v*.*.*':  # Trigger on any tag like v1.0.0, v2.1.0
+      - step:
+          name: Deploy to K3s
+          image: lachlanevenson/k8s-kubectl:v1.24.0  # Use kubectl image to interact with Kubernetes
+          script:
+            - echo "Setting up Kubernetes credentials..."
+            - echo "$KUBE_CONFIG" > kubeconfig.yaml  # Store kubeconfig as environment variable in Bitbucket
+            - export KUBECONFIG=$(pwd)/kubeconfig.yaml  # Set KUBECONFIG environment variable to use the generated kubeconfig file
+            
+            - echo "Deploying to K3s cluster..."
+            - kubectl set image deployment/your-deployment your-container=your-docker-image-name:$BITBUCKET_TAG --record  # Update the container image in the K3s deployment with the tag
+            
+            - echo "Applying Kubernetes deployment..."
+            - kubectl apply -f k8s/deployment.yaml
+            - kubectl apply -f k8s/service.yaml
+
+            - echo "Deployment completed!"
+
+    'v*.*.*-alpha':  # Trigger on any tag like v1.0.0, v2.1.0
+      - step:
+          name: Deploy to Staging Environment
+          image:   # Use kubectl image to interact with Kubernetes
+          script:
+            - echo "Setting up Kubernetes credentials..."
+            - echo "$KUBE_CONFIG" > kubeconfig.yaml  # Store kubeconfig as environment variable in Bitbucket
+            - export KUBECONFIG=$(pwd)/kubeconfig.yaml  # Set KUBECONFIG environment variable to use the generated kubeconfig file
+            
+            - echo "Deploying to K3s cluster..."
+            - kubectl set image deployment/your-deployment your-container=your-docker-image-name:$BITBUCKET_TAG --record  # Update the container image in the K3s deployment with the tag
+            
+            - echo "Applying Kubernetes deployment..."
+            - kubectl apply -f k8s/deployment.yaml
+            - kubectl apply -f k8s/service.yaml
+
+            - echo "Deployment completed!"
+    
