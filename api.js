@@ -88,6 +88,9 @@ app.get('/', authenticateToken, async (req, res) => {
     res.send(`Welcome to ${config.server.app_name} build version ${config.server.app_tag}`);
 });
 
+app.get('/test', async (req, res) => {
+    res.send(`This is a test endpoint`);
+});
 
 /**
  * @swagger
