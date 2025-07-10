@@ -1,0 +1,32 @@
+# Stage 1: Build Stage
+FROM node:20-alpine AS builder
+
+ARG APP_TAG
+ENV APP_TAG=${APP_TAG}
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy package.json and yarn.lock to install dependencies
+COPY package*.json ./
+
+# Install production dependencies only (no dev dependencies)
+RUN yarn install --production --frozen-lockfile
+
+# Copy the application source code
+COPY . .
+
+# Stage 2: Production Stage
+FROM node:20-alpine
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the app and production node_modules from the builder stage
+COPY --from=builder /app /app
+
+# Expose the port that the app will run on
+EXPOSE 3000
+
+# Command to run the application
+CMD ["yarn", "start"]
