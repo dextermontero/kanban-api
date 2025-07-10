@@ -1,63 +1,61 @@
-image: node:20-alpine  # Use Node.js with Alpine Linux for lightweight builds
+image: atlassian/default-image:4
 
 pipelines:
-  default:
-    - step:
-        name: Build and Test
-        caches:
-          - node
-        script:
-          - echo "Installing dependencies..."
-          - yarn install --frozen-lockfile  # Install dependencies using Yarn
-          - echo "Running tests..."
-          # - yarn test  # Replace with your test command (e.g., Jest, Mocha)
-    
-    - step:
-        name: Docker Build & Push
-        services:
-          - docker
-        script:
-          - echo "Building Docker image..."
-          - docker build -t your-docker-image-name .
-          - echo "Logging into Docker Hub..."
-          - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-          - echo "Pushing Docker image to Docker Hub..."
-          - docker push your-docker-image-name:latest
-
   tags:
-    'v*.*.*':  # Trigger on any tag like v1.0.0, v2.1.0
+    "v*.*.*-alpha":
       - step:
-          name: Deploy to K3s
-          image: lachlanevenson/k8s-kubectl:v1.24.0  # Use kubectl image to interact with Kubernetes
+          name: Build Staging Image
+          deployment: Staging
           script:
-            - echo "Setting up Kubernetes credentials..."
-            - echo "$KUBE_CONFIG" > kubeconfig.yaml  # Store kubeconfig as environment variable in Bitbucket
-            - export KUBECONFIG=$(pwd)/kubeconfig.yaml  # Set KUBECONFIG environment variable to use the generated kubeconfig file
-            
-            - echo "Deploying to K3s cluster..."
-            - kubectl set image deployment/your-deployment your-container=your-docker-image-name:$BITBUCKET_TAG --record  # Update the container image in the K3s deployment with the tag
-            
-            - echo "Applying Kubernetes deployment..."
-            - kubectl apply -f k8s/deployment.yaml
-            - kubectl apply -f k8s/service.yaml
-
-            - echo "Deployment completed!"
-
-    'v*.*.*-alpha':  # Trigger on any tag like v1.0.0, v2.1.0
+            - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+            - IMAGE_NAME=$BITBUCKET_REPO_SLUG
+            - docker build . --file Dockerfile.staging
+              --tag ${IMAGE_NAME}
+            - docker save ${IMAGE_NAME} --output "${IMAGE_NAME}.tar"
+          services:
+            - docker
+          caches:
+            - docker
+          artifacts:
+            - "*.tar"
       - step:
-          name: Deploy to Staging Environment
-          image:   # Use kubectl image to interact with Kubernetes
+          name: Push to Dockerhub
           script:
-            - echo "Setting up Kubernetes credentials..."
-            - echo "$KUBE_CONFIG" > kubeconfig.yaml  # Store kubeconfig as environment variable in Bitbucket
-            - export KUBECONFIG=$(pwd)/kubeconfig.yaml  # Set KUBECONFIG environment variable to use the generated kubeconfig file
-            
-            - echo "Deploying to K3s cluster..."
-            - kubectl set image deployment/your-deployment your-container=your-docker-image-name:$BITBUCKET_TAG --record  # Update the container image in the K3s deployment with the tag
-            
-            - echo "Applying Kubernetes deployment..."
-            - kubectl apply -f k8s/deployment.yaml
-            - kubectl apply -f k8s/service.yaml
-
-            - echo "Deployment completed!"
-    
+            - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+            - IMAGE_NAME=$BITBUCKET_REPO_SLUG
+            - docker load --input "${IMAGE_NAME}.tar"
+            - IMAGE=${DOCKERHUB_NAMESPACE}/${IMAGE_NAME}
+            - docker tag "${IMAGE_NAME}" "${IMAGE}:${BITBUCKET_TAG}"
+            - docker push "${IMAGE}:${BITBUCKET_TAG}"
+          services:
+            - docker
+    "v*.*.*":
+      - step:
+          name: Build Production Image
+          deployment: Production
+          script:
+            - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+            - IMAGE_NAME=$BITBUCKET_REPO_SLUG
+            - docker build . --file Dockerfile.prod
+              --tag ${IMAGE_NAME}
+            - docker save ${IMAGE_NAME} --output "${IMAGE_NAME}.tar"
+              # --build-arg VITE_APP_GOOGLE_CLIENT_SECRET=$VITE_APP_GOOGLE_CLIENT_SECRET
+          services:
+            - docker
+          caches:
+            - docker
+          artifacts:
+            - "*.tar"
+      - step:
+          name: Push to Docker hub
+          script:
+            - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+            - IMAGE_NAME=$BITBUCKET_REPO_SLUG
+            - docker load --input "${IMAGE_NAME}.tar"
+            - IMAGE=${DOCKERHUB_NAMESPACE}/${IMAGE_NAME}
+            - docker tag "${IMAGE_NAME}" "${IMAGE}:${BITBUCKET_TAG}"
+            - docker push "${IMAGE}:${BITBUCKET_TAG}"
+            - docker tag "${IMAGE_NAME}" "${IMAGE}:latest"
+            - docker push "${IMAGE}:latest"
+          services:
+            - docker

@@ -8,6 +8,11 @@ import formatResponse from "../../utils/responseFormatter.js";
 
 import userTransform from '../../utils/transformer/userTransform.js'
 
+import { body, validationResult } from 'express-validator';
+
+import encrypt from '../../security/encrypt.js';
+const { encryptPassword } = encrypt;
+
 const router = express.Router();
 
 /**
@@ -161,7 +166,7 @@ router.get('/users', authenticateToken, async (req, res) => {
  * /api/users/create:
  *   post:
  *     summary: Create a new user.
- *     description: This endpoint allows the creation of a new user.
+ *     description: This endpoint allows for the creation of a new user. The default password is `admin@123`. An auto-generated password will be implemented in the future, which will be sent to the provided email address.
  *     security:
  *       - BearerAuth: []  # Security definition to use the BearerAuth for JWT-based authentication.
  *     requestBody:
@@ -175,23 +180,63 @@ router.get('/users', authenticateToken, async (req, res) => {
  *                 type: string
  *               email_address:
  *                 type: string
- *               password:
- *                 type: string
- *               role:
- *                 type: string
- *                 enum: [admin, user, superadmin]
- *                 example: "user"
- *               verified:
- *                 type: boolean
- *                 example: true
+ *               groups:
+ *                 type: array
+ *                 example: []
  *     responses:
- *       200:
- *         description: Successfully created a new user.
+ *       201:
+ *         description: Successfully created user data.
  *       400:
  *         description: Invalid input or failed to create user.
+ *       500:
+ *         description: Internal Server Error. Something went wrong on the server.
  */
-router.post('/users/create', authenticateToken, async (req, res) => {
-    // Endpoint logic here
+router.post('/users/create', 
+    body('full_name').isLength({ min: 2 }).withMessage('Full name should be at least 2 characters'),
+    body('email_address').isEmail().withMessage('Invalid email format'),
+    (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json(formatResponse(400, 'Validation Failed', null, null, errors.array()));
+        }
+        next();
+    },
+    authenticateToken, async (req, res) => {
+    
+    try {
+        const token = req.headers['authorization']?.split(' ')[1];
+
+        const userID = jwt.verify(token, config.jwt.jwt_secret_token);
+
+        const hashedPassword = await encryptPassword(password);
+
+        const userData = {
+            avatar: null,
+            full_name: req.body.full_name,
+            email_address: req.body.email_address,
+            password: hashedPassword,
+            groups: req.body.groups,
+            roles: "",
+            verified: false,
+            created_at: new Date(),
+            updated_at: null,
+            created_by: userID._id,
+            updated_by: null
+        }
+
+        const users = await db.getDB();
+        const userCollection = await users.collection('user_login');
+
+        await userCollection.insertOne(userData)
+
+        return res.status(201).json(formatResponse(201, 'Successfully created user data'));
+    } catch(error) {
+        if(error.code === 11000){
+            return res.status(400).json(formatResponse(400, 'Email already exists'));
+        }
+
+        return res.status(500).json(formatResponse(500, 'Something went wrong', null, null, error.message));
+    }
 });
 
 /**
