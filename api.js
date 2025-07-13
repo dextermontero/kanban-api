@@ -13,6 +13,8 @@ import swaggerUi from 'swagger-ui-express';
 import authenticateToken from './middleware/authToken.js';
 import refreshToken from './middleware/refreshToken.js';
 
+import './services/userStatusChecker.js';
+
 const app = express();
 
 app.set('trust proxy', 1);
@@ -182,13 +184,7 @@ const swaggerDefinition = {
         title: 'Kanban API',
         version: '1.0.0',
         description: 'A simple Kanban API',
-    },
-    servers: [
-        {
-        url: `${app_url}`,
-        description: 'Development server',
-        },
-    ],
+    }
 };
 
 const swaggerOptions = {

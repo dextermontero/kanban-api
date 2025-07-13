@@ -2,6 +2,7 @@ import config from "../../config/env.js";
 import db from '../../config/db.js';
 import express from "express";
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 
 import authenticateToken from '../../middleware/authToken.js';
 import formatResponse from "../../utils/responseFormatter.js";
@@ -207,10 +208,13 @@ router.post('/users/create',
         const token = req.headers['authorization']?.split(' ')[1];
 
         const userID = jwt.verify(token, config.jwt.jwt_secret_token);
-
+        
+        const uuid = uuidv4();
+        const password= "admin@123"
         const hashedPassword = await encryptPassword(password);
 
         const userData = {
+            _id: uuid,
             avatar: null,
             full_name: req.body.full_name,
             email_address: req.body.email_address,
@@ -315,6 +319,11 @@ router.post('/users/update', authenticateToken, async (req, res) => {
  */
 router.post('/users/delete', authenticateToken, async (req, res) => {
     // Endpoint logic here
+    try {
+
+    } catch (error) {
+        return res.status(500).json(formatResponse(500, 'Something went wrong', null, null, error.message));
+    }
 });
 
 export default router;

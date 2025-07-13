@@ -69,21 +69,21 @@ router.post('/register',
 
         const { full_name, email, password } = req.body;
 
-        const hashedPassword = await encryptPassword(password);
-
-        const db = await db.getDB();
-        const user_login = await db.collection('user_login');
-
-        const existingUser = await user_login.findOne({ email_address: email });
-
-        if (existingUser) {
-            return res.status(400).json({ message: 'Email is already registered' });
-        }
-
         try {
+            const dbInstance = await db.getDB();
+            const userCollection = dbInstance.collection('user_login');
+
+            const existingUser = await userCollection.findOne({ email_address: email.trim().toLowerCase()});
+
+            if (existingUser) {
+                return res.status(400).json({ message: 'Email is already registered' });
+            }
+
+            const hashedPassword = await encryptPassword(password);
+
             const uuid = uuidv4();
 
-            const userRegister = await user_login.insertOne({
+            const userRegister = await userCollection.insertOne({
                 _id: uuid,
                 avatar: null,
                 full_name: full_name,
@@ -92,6 +92,8 @@ router.post('/register',
                 groups: [],
                 roles: "",
                 verified: false,
+                user_status: "active",
+                last_active_at: null,
                 created_at: new Date(),
                 updated_at: null
             });
@@ -101,8 +103,9 @@ router.post('/register',
             } else {
                 return res.status(400).json(formatResponse(400, "Failed to register user"));
             }
+
         } catch (error) {
-            return res.status(500).json(formatResponse(500, "Internal server error"));
+            return res.status(500).json(formatResponse(500, 'Something went wrong', null, null, error.message));
         }
     }
 );
@@ -202,7 +205,9 @@ router.post('/login', async (req, res) => {
             email_address: existingUser.email_address,
             groups: existingUser.groups || [], 
             roles: existingUser.roles || "", 
-            verified: existingUser.verified || false, 
+            verified: existingUser.verified || false,
+            user_status: existingUser.user_status || "active",
+            last_active_at: existingUser.last_active_at || null,
             created_at: existingUser.created_at, 
             updated_at: existingUser.updated_at,
             access_token: accessToken
