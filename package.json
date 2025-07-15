@@ -4,8 +4,8 @@
   "main": "api.js",
   "license": "MIT",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js"
+    "start": "node api.js",
+    "dev": "nodemon api.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
