@@ -13,7 +13,7 @@ const config = {
         app_tag: process.env.APP_TAG || "Localhost",
         app_debug: JSON.parse(process.env.APP_DEBUG || 'true'),
         app_url: process.env.APP_URL || "localhost",
-        port: process.env.PORT || 8002
+        port: process.env.APP_PORT || 8002
     },
 
     jwt: {

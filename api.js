@@ -175,6 +175,8 @@ process.on('SIGTERM', async () => {
     process.exit();
 });
 
+console.log(config)
+
 const app_url = config.server.app_url;
 const port = config.server.port;
 
