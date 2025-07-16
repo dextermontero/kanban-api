@@ -8,9 +8,9 @@ const config = {
     },
 
     server: {
-        app_name: process.env.APP_NAME || "Localhost",
+        app_name: process.env.APP_NAME || "localhost",
         app_env: process.env.APP_ENV || "development",
-        app_tag: process.env.APP_TAG || "Localhost",
+        app_tag: process.env.APP_TAG || "localhost",
         app_debug: JSON.parse(process.env.APP_DEBUG || 'true'),
         app_url: process.env.APP_URL || "localhost",
         port: process.env.APP_PORT || 8002
