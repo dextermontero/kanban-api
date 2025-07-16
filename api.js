@@ -196,6 +196,7 @@ const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+console.log(config.server.app_tag)
 app.listen(port, () => {
     console.log(`Server is running on ${app_url}`);
 });
