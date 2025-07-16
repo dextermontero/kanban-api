@@ -10,9 +10,9 @@ pipelines:
             - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
             - IMAGE_NAME=$BITBUCKET_REPO_SLUG
             - docker build . \
-              --build-arg APP_TAG=${BITBUCKET_TAG} \
-              --file Dockerfile.staging \
-              --tag ${IMAGE_NAME}
+                --build-arg APP_TAG=${BITBUCKET_TAG} \
+                --file Dockerfile.staging \
+                --tag ${IMAGE_NAME}
             - docker save ${IMAGE_NAME} --output "${IMAGE_NAME}.tar"
           services:
             - docker
@@ -31,6 +31,7 @@ pipelines:
             - docker push "${IMAGE}:${BITBUCKET_TAG}"
           services:
             - docker
+
     "v*.*.*":
       - step:
           name: Build Production Image
@@ -39,9 +40,9 @@ pipelines:
             - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
             - IMAGE_NAME=$BITBUCKET_REPO_SLUG
             - docker build . \
-              --build-arg APP_TAG=${BITBUCKET_TAG} \
-              --file Dockerfile.prod \
-              --tag ${IMAGE_NAME}
+                --build-arg APP_TAG=${BITBUCKET_TAG} \
+                --file Dockerfile.prod \
+                --tag ${IMAGE_NAME}
             - docker save ${IMAGE_NAME} --output "${IMAGE_NAME}.tar"
               # --build-arg VITE_APP_GOOGLE_CLIENT_SECRET=$VITE_APP_GOOGLE_CLIENT_SECRET
           services:
