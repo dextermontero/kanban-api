@@ -91,7 +91,7 @@ app.get('/', authenticateToken, async (req, res) => {
 });
 
 app.get('/test', async (req, res) => {
-    res.send(`This is a test endpoint`);
+    res.send(`Welcome to ${config.server.app_name} build version ${config.server.app_tag}`);
 });
 
 /**
@@ -196,7 +196,6 @@ const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-console.log(config.server.app_tag)
 app.listen(port, () => {
     console.log(`Server is running on ${app_url}`);
 });
