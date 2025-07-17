@@ -37,12 +37,14 @@ app.use(limiter);
 app.use(cookieParser());
 app.use(express.json());
 app.use(helmet({
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginEmbedderPolicy: { policy: 'require-corp' },
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
             connectSrc: [
                 "'self'",
-                "https://kanban-api-tyww.onrender.com/"
+                "https://localhost:8001"
             ],
             scriptSrc: ["'self'", "'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
