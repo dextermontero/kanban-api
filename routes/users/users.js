@@ -36,21 +36,18 @@ const router = express.Router();
  *         name: full_name
  *         schema:
  *           type: string
- *           example: "John Doe"
  *         required: false
  *         description: Filter users by full name
  *       - in: query
  *         name: email_address
  *         schema:
  *           type: string
- *           example: "admin@gmail.com"
  *         required: false
  *         description: Filter users by email address
  *       - in: query
  *         name: role
  *         schema:
  *           type: array
- *           example: ["admin", "user", "superadmin"]
  *         required: false
  *         description: Filter users by role
  *       - in: query

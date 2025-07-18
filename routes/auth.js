@@ -147,15 +147,12 @@ router.post('/register',
  */
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
-    const user = await db.getDB();
-    const user_login = await user.collection('user_login');
-    const generated_tokens = await user.collection('generated_tokens');
+    const dbInstance = await db.getDB();
+    const user_login = dbInstance.collection('user_login');
 
     const existingUser = await user_login.findOne({ email_address: email });
 
-    if (!existingUser) {
-        return res.status(401).json(formatResponse(401, 'Invalid credentials. Please try again!'));
-    }
+    if (!existingUser) return res.status(401).json(formatResponse(401, 'Invalid credentials. Please try again!'));
 
     const match = await comparePassword(password, existingUser.password);
 
@@ -164,18 +161,31 @@ router.post('/login', async (req, res) => {
     try {
         const userIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
         const userAgent = req.headers['user-agent'];
+        const jti = `${existingUser._id}-${Date.now()}`;
 
         const accessToken = jwt.sign(
-            { _id: existingUser._id, email: existingUser.email_address, jti: `${existingUser._id}-${new Date().getTime()}`, },
+            { 
+                _id: existingUser._id, 
+                email: existingUser.email_address, 
+                jti, 
+            },
             config.jwt.jwt_secret_token,
             { expiresIn: config.jwt.jwt_secret_token_expiry }
         );
 
         const refreshToken = jwt.sign(
-            { _id: existingUser._id, email: existingUser.email_address },
+            { 
+                _id: existingUser._id, 
+                email: existingUser.email_address,
+                jti, 
+            },
             config.jwt.jwt_refresh_token,
             { expiresIn: config.jwt.jwt_refresh_token_expiry }
         );
+
+        const hashedRefreshToken = await encryptPassword(refreshToken);
+        const redisKey = `refreshToken:${existingUser.email_address}`;
+        await redis.set(redisKey, hashedRefreshToken, { EX: 7 * 24 * 60 * 60 });
 
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
@@ -183,20 +193,6 @@ router.post('/login', async (req, res) => {
             sameSite: 'Strict',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
-
-        await generated_tokens.updateOne(
-            {
-                email: existingUser.email_address,
-            },
-            {
-                $set: {
-                    lastLoginIp: userIp,
-                    lastLoginUserAgent: userAgent,
-                    lastLoginAt: new Date(),
-                }
-            },
-            { upsert: true }
-        )
 
         const userResponse = {
             id: existingUser._id,
@@ -214,36 +210,19 @@ router.post('/login', async (req, res) => {
         };
 
         return res.status(200).json(formatResponse(200, 'Logged in successfully', userResponse));
-
     } catch (error) {
-        return res.status(401).json(formatResponse(401, 'Invalid credentials. Please try again!'));
+        console.error('Login error:', error);
+        return res.status(500).json(formatResponse(500, 'Internal server error'));
     }
 });
 /**
  * @swagger
- * components:
- *   securitySchemes:
- *     BearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
- * 
  * /api/auth/logout:
  *   post:
  *     summary: Logs the user out
- *     description: Logs the user out by clearing the refresh token cookie.
+ *     description: Logs the user out by clearing the refresh token cookie and blacklisting the access token.
  *     security:
  *       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               token:
- *                 type: string
- *                 example: ""
  *     responses:
  *       200:
  *         description: Successfully logged out
@@ -254,16 +233,44 @@ router.post('/login', async (req, res) => {
  *               properties:
  *                 message:
  *                   type: string
- *                 token:
- *                   type: string
- *       400:
- *         description: Invalid credentials. Please try again!
+ *                   example: Logged out successfully
+ *       401:
+ *         description: No token provided
+ *       403:
+ *         description: Token is invalid or blacklisted
  */
 router.post('/logout', authenticateToken, async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1];
 
-    if (!token) {
-        return res.status(401).json(formatResponse(401, 'No token provided'));
+    if (!token) return res.status(401).json(formatResponse(401, 'No token provided'));
+
+    try {
+        const decoded = jwt.decode(token);
+
+        if (!decoded || !decoded.email || !decoded.jti) {
+            return res.status(401).json(formatResponse(401, 'Invalid token'));
+        }
+
+        const email = decoded.email;
+        const jti = decoded.jti;
+
+        const redisKeyRefresh = `refreshToken:${email}`;
+        const redisKeyBlacklist = `accessToken:blacklist:${jti}`;
+
+        await redis.set(redisKeyBlacklist, 'blacklisted', { EX: 60 * 60 });
+        await redis.del(redisKeyRefresh);
+
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: config.server.app_env === 'production',
+            sameSite: 'Strict',
+            maxAge: 0,
+        });
+
+        return res.status(200).json(formatResponse(200, 'Logged out successfully'));
+    } catch (error) {
+        console.error('Logout error:', error);
+        return res.status(500).json(formatResponse(500, 'Internal server error'));
     }
 
     if (token) {
